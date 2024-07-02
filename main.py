@@ -18,14 +18,22 @@ async def pong():
     return "pong"
 
 @app.post("/convert")
-async def convert(from_format: str = Form(...), to_format: str = Form(...), file: UploadFile = File(...)):
+async def convert(from_format: str = Form(...), to_format: str = Form(...), file: UploadFile = File(None), content: str = Form(None)):
     temp_file_path = None
     output_file_path = None
+
+    if file is None and content is None:
+        raise HTTPException(status_code=400, detail="Either a file or content must be provided.")
 
     try:
         with NamedTemporaryFile(delete=False, suffix=f'.{from_format}', mode='wb+') as temp_file:
             temp_file_path = temp_file.name
-            content = await file.read()
+
+            if file:
+                content = await file.read()
+            elif content:
+                content = content.encode()
+
             temp_file.write(content)
             temp_file.flush()
 
