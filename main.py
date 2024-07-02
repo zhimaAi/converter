@@ -48,7 +48,7 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
             if to_format == "html":
                 pdoc_args = ["--embed-resources=true"]
             elif to_format == "pdf":
-                pdoc_args = ["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC", "header-includes=\setlength{\parindent}{0pt}"]
+                pdoc_args = ["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC"]
             pypandoc.convert_file(temp_file_path, to_format, outputfile=output_file_path, extra_args=pdoc_args)
 
         asyncio.create_task(delete_file(temp_file_path, 60))  # Delete after 1 minutes
