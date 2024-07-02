@@ -8,3 +8,23 @@ This FastAPI service supports file conversions between PDF, DOCX, and other form
 - `/convert`: Converts files from one format to another and downloads the converted file.
 
 Files are temporarily stored and automatically deleted after 1 minute.
+
+# Usage
+
+Run from docker
+
+```bash
+docker run -d --name converter -p 8000:80 shellphy/zhima_chat_ai_converter
+```
+
+Convert html doc file to markdown
+
+```bash
+curl -X POST -F "from_format=html" -F "to_format=md" -F "file=@/path/to/example.html" http://127.0.0.1:8000/convert --output result.md
+```
+
+Convert html string to markdown
+
+```bash
+curl -X POST -F "from_format=html" -F "to_format=md" -F "content=hello,world" http://127.0.0.1:8000/convert --output result.md
+```
