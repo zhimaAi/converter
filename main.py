@@ -76,7 +76,7 @@ def convert_pdf_to_docx(input_path, output_path):
 def convert_with_pandoc(input_path, to_format, output_path):
     pdoc_args = []
     if to_format == "html":
-        pdoc_args = ["--embed-resources=true"]
+        pdoc_args = ["--embed-resources"]
     elif to_format == "pdf":
         pdoc_args = ["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC"]
     pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
