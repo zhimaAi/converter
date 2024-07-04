@@ -74,11 +74,11 @@ def convert_pdf_to_docx(input_path, output_path):
     cv.close()
 
 def convert_with_pandoc(input_path, to_format, output_path):
-    pdoc_args = []
+    pdoc_args = ["--request-header", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"]
     if to_format == "html":
-        pdoc_args = ["--embed-resources"]
+        pdoc_args.extend(["--embed-resources"])
     elif to_format == "pdf":
-        pdoc_args = ["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC"]
+        pdoc_args.extend(["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC"])
     pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
 
 async def delete_files_async(file_paths, delay):
