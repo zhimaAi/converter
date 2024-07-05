@@ -22,6 +22,8 @@ async def pong():
 
 @app.post("/convert")
 async def convert(from_format: str = Form(...), to_format: str = Form(...), file: UploadFile = File(None), content: str = Form(None)):
+    if to_format == "pdf":
+        raise HTTPException(status_code=400, detail="Conversion to pdf is not supported")
     if file is None and content is None:
         raise HTTPException(status_code=400, detail="Either a file or content must be provided.")
     
@@ -74,11 +76,7 @@ def convert_pdf_to_docx(input_path, output_path):
     cv.close()
 
 def convert_with_pandoc(input_path, to_format, output_path):
-    pdoc_args = ["--request-header", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"]
-    if to_format == "html":
-        pdoc_args.extend(["--embed-resources"])
-    elif to_format == "pdf":
-        pdoc_args.extend(["--pdf-engine=xelatex", "-V", "mainfont=Noto Sans CJK SC"])
+    pdoc_args = ["--embed-resources", "--request-header", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"]
     pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
 
 async def delete_files_async(file_paths, delay):
