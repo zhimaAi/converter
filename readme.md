@@ -14,7 +14,7 @@ Files are temporarily stored and automatically deleted after 1 minute.
 Run from docker
 
 ```bash
-docker run -d --name converter -p 8000:80 shellphy/zhima_chat_ai_converter
+docker run -d --name converter -p 8000:80 shellphy/chatwiki_converter
 ```
 
 Convert html doc file to markdown
