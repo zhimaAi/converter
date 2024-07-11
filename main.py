@@ -1,4 +1,5 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
+from starlette.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from fastapi.responses import FileResponse
 from tempfile import mkdtemp, TemporaryDirectory
@@ -6,7 +7,7 @@ from pdf2docx import Converter
 import asyncio
 import pypandoc
 import logging
-import os
+import os, time
 
 app = FastAPI()
 
@@ -36,14 +37,17 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
 
         await save_uploaded_file(file, content, input_path)
         if from_format == "pdf":
-            convert_pdf_to_docx(input_path, intermediate_path)
+            # convert_pdf_to_docx(input_path, intermediate_path)
+            await run_in_threadpool(convert_pdf_to_docx, input_path, intermediate_path)
             if to_format == "docx":
                 final_path = intermediate_path
             else:
-                convert_with_pandoc(intermediate_path, to_format, output_path)
+                # convert_with_pandoc(intermediate_path, to_format, output_path)
+                await run_in_threadpool(convert_with_pandoc, intermediate_path, to_format, output_path)
                 final_path = output_path
         else:
-            convert_with_pandoc(input_path, to_format, output_path)
+            # convert_with_pandoc(input_path, to_format, output_path)
+            await run_in_threadpool(convert_with_pandoc, input_path, to_format, output_path)
             final_path = output_path
 
         response = FileResponse(path=final_path, filename=f'converted.{to_format}', media_type='application/octet-stream')
@@ -63,12 +67,6 @@ async def save_uploaded_file(file, content, path):
     
     with open(path, 'wb') as f:
         f.write(content)
-
-def convert_document(from_format, to_format, input_path, output_path):
-    if from_format == "pdf" and to_format == "docx":
-        convert_pdf_to_docx(input_path, output_path)
-    else:
-        convert_with_pandoc(input_path, to_format, output_path)
 
 def convert_pdf_to_docx(input_path, output_path):
     cv = Converter(input_path)
