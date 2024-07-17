@@ -37,16 +37,13 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
 
         await save_uploaded_file(file, content, input_path)
         if from_format == "pdf":
-            # convert_pdf_to_docx(input_path, intermediate_path)
             await run_in_threadpool(convert_pdf_to_docx, input_path, intermediate_path)
             if to_format == "docx":
                 final_path = intermediate_path
             else:
-                # convert_with_pandoc(intermediate_path, to_format, output_path)
-                await run_in_threadpool(convert_with_pandoc, intermediate_path, to_format, output_path)
+                await run_in_threadpool(convert_with_pandoc, from_format, intermediate_path, to_format, output_path)
                 final_path = output_path
         else:
-            # convert_with_pandoc(input_path, to_format, output_path)
             await run_in_threadpool(convert_with_pandoc, from_format, input_path, to_format, output_path)
             final_path = output_path
 
