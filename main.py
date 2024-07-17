@@ -47,7 +47,7 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
                 final_path = output_path
         else:
             # convert_with_pandoc(input_path, to_format, output_path)
-            await run_in_threadpool(convert_with_pandoc, input_path, to_format, output_path)
+            await run_in_threadpool(convert_with_pandoc, from_format, input_path, to_format, output_path)
             final_path = output_path
 
         response = FileResponse(path=final_path, filename=f'converted.{to_format}', media_type='application/octet-stream')
@@ -73,9 +73,17 @@ def convert_pdf_to_docx(input_path, output_path):
     cv.convert(output_path, multi_processing=True) 
     cv.close()
 
-def convert_with_pandoc(input_path, to_format, output_path):
-    pdoc_args = ["--embed-resources", "--request-header", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"]
-    pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
+def convert_with_pandoc(from_format, input_path, to_format, output_path):
+    if from_format == 'txt' and to_format == 'html':
+        with open(input_path, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        text = ''.join(line.strip() + '  \n' for line in lines)
+        output = pypandoc.convert_text(text, 'html', format='markdown')
+        with open(output_path, 'w', encoding='utf-8') as file:
+            file.write(output)
+    else:
+        pdoc_args = ["--embed-resources", "--request-header", "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"]
+        pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
 
 async def delete_files_async(file_paths, delay):
     await asyncio.sleep(delay)
