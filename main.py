@@ -66,9 +66,15 @@ async def save_uploaded_file(file, content, path):
         f.write(content)
 
 def convert_pdf_to_docx(input_path, output_path):
-    cv = Converter(input_path)
-    cv.convert(output_path, multi_processing=True) 
-    cv.close()
+    try:
+        cv = Converter(input_path)
+        cv.convert(output_path, multi_processing=True)
+        cv.close()
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Optionally, fall back to single-processing
+        cv.convert(output_path, multi_processing=False)
+        cv.close()
 
 def convert_with_pandoc(from_format, input_path, to_format, output_path):
     if from_format == 'txt' and to_format == 'html':
