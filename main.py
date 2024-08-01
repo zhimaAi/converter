@@ -1,8 +1,7 @@
 from fastapi import FastAPI, File, Form, UploadFile, HTTPException
-from starlette.concurrency import run_in_threadpool
 from fastapi.responses import PlainTextResponse
 from fastapi.responses import FileResponse
-from tempfile import mkdtemp, TemporaryDirectory
+from tempfile import mkdtemp
 from pdf2docx import Converter
 import asyncio
 import pypandoc
@@ -37,14 +36,14 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
 
         await save_uploaded_file(file, content, input_path)
         if from_format == "pdf":
-            await run_in_threadpool(convert_pdf_to_docx, input_path, intermediate_path)
+            await convert_pdf_to_docx, input_path, intermediate_path
             if to_format == "docx":
                 final_path = intermediate_path
             else:
-                await run_in_threadpool(convert_with_pandoc, from_format, intermediate_path, to_format, output_path)
+                await convert_with_pandoc, from_format, intermediate_path, to_format, output_path
                 final_path = output_path
         else:
-            await run_in_threadpool(convert_with_pandoc, from_format, input_path, to_format, output_path)
+            await convert_with_pandoc, from_format, input_path, to_format, output_path
             final_path = output_path
 
         response = FileResponse(path=final_path, filename=f'converted.{to_format}', media_type='application/octet-stream')
@@ -65,7 +64,7 @@ async def save_uploaded_file(file, content, path):
     with open(path, 'wb') as f:
         f.write(content)
 
-def convert_pdf_to_docx(input_path, output_path):
+async def convert_pdf_to_docx(input_path, output_path):
     try:
         cv = Converter(input_path)
         cv.convert(output_path, multi_processing=True)
@@ -76,7 +75,7 @@ def convert_pdf_to_docx(input_path, output_path):
         cv.convert(output_path, multi_processing=False)
         cv.close()
 
-def convert_with_pandoc(from_format, input_path, to_format, output_path):
+async def convert_with_pandoc(from_format, input_path, to_format, output_path):
     if from_format == 'txt' and to_format == 'html':
         with open(input_path, 'r', encoding='utf-8') as file:
             lines = file.readlines()
