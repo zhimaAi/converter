@@ -40,10 +40,10 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
             if to_format == "docx":
                 final_path = intermediate_path
             else:
-                await convert_with_pandoc, from_format, intermediate_path, to_format, output_path
+                await convert_with_pandoc(from_format, intermediate_path, to_format, output_path)
                 final_path = output_path
         else:
-            await convert_with_pandoc, from_format, input_path, to_format, output_path
+            await convert_with_pandoc(from_format, input_path, to_format, output_path)
             final_path = output_path
 
         response = FileResponse(path=final_path, filename=f'converted.{to_format}', media_type='application/octet-stream')
