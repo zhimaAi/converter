@@ -36,7 +36,7 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
 
         await save_uploaded_file(file, content, input_path)
         if from_format == "pdf":
-            await convert_pdf_to_docx, input_path, intermediate_path
+            await convert_pdf_to_docx(input_path, intermediate_path)
             if to_format == "docx":
                 final_path = intermediate_path
             else:
