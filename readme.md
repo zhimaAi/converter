@@ -28,3 +28,9 @@ Convert html string to markdown
 ```bash
 curl -X POST -F "from_format=html" -F "to_format=md" -F "content=hello,world" http://127.0.0.1:8000/convert --output result.md
 ```
+
+Build docker image
+
+```bash
+docker build --platform linux/amd64 -t registry.cn-hangzhou.aliyuncs.com/chatwiki/converter:{tag} .
+```
