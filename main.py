@@ -76,87 +76,56 @@ async def convert_pdf_to_docx(input_path, output_path):
     # 设置超时时间（秒）
     timeout = 60
     
+    # 使用子进程执行转换，这样可以完全控制进程生命周期
+    process = None
     try:
-        # 创建一个Python脚本来执行转换
-        script = f"""
+        cmd = [
+            sys.executable, 
+            "-c", 
+            f"""
 import sys
-import os
-import signal
 from pdf2docx import Converter
-import multiprocessing as mp
-import logging
-
-# 设置进程组，便于后续终止所有子进程
-os.setpgrp()
-
-# 添加信号处理器，确保优雅关闭
-def handle_term(signum, frame):
-    if 'cv' in globals() and cv:
-        try:
-            cv.close()
-        except:
-            pass
-    sys.exit(0)
-
-signal.signal(signal.SIGTERM, handle_term)
+import traceback
 
 try:
     cv = Converter('{input_path}')
-    cv.convert('{output_path}', multi_processing=True)
+    cv.convert('{output_path}')
     cv.close()
-    sys.exit(0)
 except Exception as e:
-    print(f"Error: {{e}}", file=sys.stderr)
-    if 'cv' in locals() and cv:
-        try:
-            cv.close()
-        except:
-            pass
+    print(f"转换错误: {{type(e).__name__}}: {{str(e)}}", file=sys.stderr)
     sys.exit(1)
 """
-        # 使用subprocess运行脚本，设置超时
-        process = None
+        ]
+        
+        # 启动进程
+        process = subprocess.Popen(
+            cmd,
+            stdout=None,
+            stderr=None,
+            text=True
+        )
+        
+        # 使用asyncio在事件循环中等待进程完成，并设置超时
         try:
-            # 使用Popen启动进程
-            process = subprocess.Popen(
-                [sys.executable, '-c', script],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                preexec_fn=os.setsid
+            loop = asyncio.get_event_loop()
+            await asyncio.wait_for(
+                loop.run_in_executor(None, process.communicate),
+                timeout=timeout
             )
             
-            # 等待进程完成，带有超时
-            try:
-                stdout, stderr = process.communicate(timeout=timeout)
-                if process.returncode != 0:
-                    raise Exception(f"PDF转换失败: {stderr}")
-            except subprocess.TimeoutExpired:
-                # 终止整个进程组
-                try:
-                    os.killpg(process.pid, signal.SIGTERM)
-                    # 给进程一点时间来清理
-                    process.wait(timeout=1)
-                except:
-                    # 如果进程没有及时终止，强制终止
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except:
-                        pass 
-                raise Exception(f"PDF转换超时，超过了{timeout}秒的限制")
+            # 检查进程返回码
+            if process.returncode != 0:
+                raise Exception(f"PDF转换失败，返回码: {process.returncode}")
                 
-        except Exception as e:
-            if not isinstance(e, subprocess.TimeoutExpired):
-                # 确保进程被终止
-                if process and process.poll() is None:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except:
-                        pass
-                raise Exception(f"PDF转换失败: {e}")
-            else:
-                raise
+        except asyncio.TimeoutError:
+            if process.poll() is None:
+                process.kill()
+            raise Exception(f"PDF转换超时，超过了{timeout}秒的限制")
+            
     except Exception as e:
+        # 确保进程被终止
+        if process and process.poll() is None:
+            process.kill()
         logging.error(f"PDF转换出错: {e}")
         raise
 
