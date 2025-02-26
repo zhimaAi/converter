@@ -9,7 +9,6 @@ import logging
 import os
 import subprocess
 import sys
-import signal
 import multiprocessing as mp
 
 app = FastAPI()
@@ -26,7 +25,8 @@ async def pong():
 
 @app.post("/convert")
 async def convert(from_format: str = Form(...), to_format: str = Form(...), file: UploadFile = File(None), content: str = Form(None)):
-    print("收到请求 from_format: ", from_format, " to_format: ", to_format , " file: ", file, " content: ", content)
+    # print("收到请求 from_format: ", from_format, " to_format: ", to_format , " file: ", file, " content: ", content)
+    logging.info(f"收到请求 from_format: {from_format}, to_format: {to_format}, file: {file}, content: {content}")
 
     if to_format == "pdf":
         raise HTTPException(status_code=400, detail="Conversion to pdf is not supported")
