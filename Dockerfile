@@ -1,6 +1,6 @@
 FROM python:3.12-slim-bookworm
 
-RUN apt-get update && apt-get install -y --no-install-recommends pandoc && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends pandoc tesseract-ocr tesseract-ocr-chi-sim && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
 COPY ./requirements.txt /code/requirements.txt
