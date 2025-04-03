@@ -11,35 +11,43 @@ import subprocess
 import sys
 import multiprocessing as mp
 from pathlib import Path
-from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import (
-    PdfPipelineOptions,
-    TesseractCliOcrOptions,
-    TesseractOcrOptions,
-)
-from docling.document_converter import DocumentConverter, PdfFormatOption
 
 app = FastAPI()
 
 logging.basicConfig(level=logging.INFO)
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
-def getPdfOcrConverter():
+# 将docling相关导入和初始化移到函数内部
+converter = None
+
+def init_docling_converter():
+    global converter
+    if converter is not None:
+        return converter
+        
+    from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import (
+        PdfPipelineOptions,
+        TesseractCliOcrOptions,
+        TesseractOcrOptions,
+    )
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    
     pipeline_options = PdfPipelineOptions()
     pipeline_options.do_ocr = True
     pipeline_options.do_table_structure = True
     pipeline_options.table_structure_options.do_cell_matching = True
     ocr_options = TesseractCliOcrOptions(force_full_page_ocr=True, lang=["chi_sim"])
     pipeline_options.ocr_options = ocr_options
-    return DocumentConverter(
+    converter = DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(
                 pipeline_options=pipeline_options,
             )
         }
     )
-converter = getPdfOcrConverter()
+    return converter
 
 @app.get("/", response_class=PlainTextResponse)
 async def root():
@@ -58,6 +66,14 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
         raise HTTPException(status_code=400, detail="Conversion to pdf is not supported")
     if file is None and content is None:
         raise HTTPException(status_code=400, detail="Either a file or content must be provided.")
+    
+    # 增加OCR功能检查
+    if use_ocr:
+        try:
+            # 尝试导入torch检查OCR功能是否可用
+            import torch
+        except ImportError:
+            raise HTTPException(status_code=400, detail="OCR功能不可用，请关闭OCR选项后再试。缺少PyTorch库：libtorch_cpu.dylib")
     
     tmpdir = mkdtemp()
     input_path = os.path.join(tmpdir, f'input.{from_format}')
@@ -181,10 +197,16 @@ async def convert_pdf_with_docling(input_path, output_path):
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
         
-        doc = converter.convert(input_path).document
-        content = doc.export_to_html()
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(content)
+        try:
+            doc_converter = init_docling_converter()
+            doc = doc_converter.convert(input_path).document
+            content = doc.export_to_html()
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+        except ImportError as e:
+            # 如果无法导入docling相关模块，提供错误信息
+            logging.error(f"无法导入Docling相关模块: {e}")
+            raise HTTPException(status_code=500, detail="服务器未正确配置OCR功能，请尝试不使用OCR选项")
              
     except Exception as e:
         logging.error(f"Docling转换出错: {e}")
