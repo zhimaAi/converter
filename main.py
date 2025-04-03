@@ -17,14 +17,7 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
-# 将docling相关导入和初始化移到函数内部
-converter = None
-
 def init_docling_converter():
-    global converter
-    if converter is not None:
-        return converter
-        
     from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import (
@@ -48,6 +41,7 @@ def init_docling_converter():
         }
     )
     return converter
+converter = init_docling_converter()
 
 @app.get("/", response_class=PlainTextResponse)
 async def root():
@@ -66,14 +60,6 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
         raise HTTPException(status_code=400, detail="Conversion to pdf is not supported")
     if file is None and content is None:
         raise HTTPException(status_code=400, detail="Either a file or content must be provided.")
-    
-    # 增加OCR功能检查
-    if use_ocr:
-        try:
-            # 尝试导入torch检查OCR功能是否可用
-            import torch
-        except ImportError:
-            raise HTTPException(status_code=400, detail="OCR功能不可用，请关闭OCR选项后再试。缺少PyTorch库：libtorch_cpu.dylib")
     
     tmpdir = mkdtemp()
     input_path = os.path.join(tmpdir, f'input.{from_format}')
@@ -190,16 +176,12 @@ async def convert_with_pandoc(from_format, input_path, to_format, output_path):
         pypandoc.convert_file(input_path, to_format, outputfile=output_path, extra_args=pdoc_args)
 
 async def convert_pdf_with_docling(input_path, output_path):
-    # 设置超时时间（秒）
-    timeout = 160
-    
     try:
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
         
         try:
-            doc_converter = init_docling_converter()
-            doc = doc_converter.convert(input_path).document
+            doc = converter.convert(input_path).document
             content = doc.export_to_html()
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(content)
