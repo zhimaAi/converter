@@ -10,10 +10,36 @@ import os
 import subprocess
 import sys
 import multiprocessing as mp
+from pathlib import Path
+from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import (
+    PdfPipelineOptions,
+    TesseractCliOcrOptions,
+    TesseractOcrOptions,
+)
+from docling.document_converter import DocumentConverter, PdfFormatOption
 
 app = FastAPI()
 
 logging.basicConfig(level=logging.INFO)
+os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
+
+def getPdfOcrConverter():
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.do_ocr = True
+    pipeline_options.do_table_structure = True
+    pipeline_options.table_structure_options.do_cell_matching = True
+    ocr_options = TesseractCliOcrOptions(force_full_page_ocr=True, lang=["chi_sim"])
+    pipeline_options.ocr_options = ocr_options
+    return DocumentConverter(
+        format_options={
+            InputFormat.PDF: PdfFormatOption(
+                pipeline_options=pipeline_options,
+            )
+        }
+    )
+converter = getPdfOcrConverter()
 
 @app.get("/", response_class=PlainTextResponse)
 async def root():
@@ -149,97 +175,17 @@ async def convert_with_pandoc(from_format, input_path, to_format, output_path):
 
 async def convert_pdf_with_docling(input_path, output_path):
     # 设置超时时间（秒）
-    timeout = 180  # OCR 需要更长的处理时间
+    timeout = 160
     
     try:
-        # 创建输出目录
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
         
-        # 获取输入文件的基本名称（不含扩展名）
-        base_name = os.path.splitext(os.path.basename(input_path))[0]
-        
-        cmd = [
-            "docling",
-            input_path,
-            "--force-ocr",
-            "--to", "html",
-            "--pdf-backend", "pypdfium2",
-            "--ocr-engine", "tesseract",
-            "--ocr-lang=chi_sim",
-            "--output", output_dir,
-            "--verbose",
-        ]
-        
-        logging.info(f"执行命令: {' '.join(cmd)}")
-        
-        # 启动进程
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
-        async def read_stream(stream):
-            try:
-                while True:
-                    line = await stream.readline()
-                    if not line:
-                        break
-                    text = line.decode().strip()
-                    if text:
-                        # 根据日志内容判断日志级别
-                        if text.startswith(("INFO:", "INFO：")):
-                            logging.info(f"Docling: {text}")
-                        elif text.startswith(("WARNING:", "WARNING：", "WARN:", "WARN：")):
-                            logging.warning(f"Docling: {text}")
-                        elif text.startswith(("ERROR:", "ERROR：")):
-                            logging.error(f"Docling: {text}")
-                        elif text.startswith(("DEBUG:", "DEBUG：")):
-                            logging.debug(f"Docling: {text}")
-                        else:
-                            logging.info(f"Docling: {text}")
-            except Exception as e:
-                logging.error(f"读取输出流错误: {e}")
-        
-        try:
-            # 创建两个任务来并行读取 stdout 和 stderr
-            stdout_task = asyncio.create_task(read_stream(process.stdout))
-            stderr_task = asyncio.create_task(read_stream(process.stderr))
-            
-            # 等待进程完成，设置超时
-            try:
-                await asyncio.wait_for(process.wait(), timeout=timeout)
-            except asyncio.TimeoutError:
-                process.kill()
-                raise Exception(f"Docling转换超时，超过了{timeout}秒的限制")
-            
-            # 等待输出流读取完成
-            await stdout_task
-            await stderr_task
-            
-            if process.returncode != 0:
-                raise Exception(f"Docling转换失败，返回码: {process.returncode}")
-            
-            # docling 会在输出目录生成 {base_name}.html 文件
-            expected_output = os.path.join(output_dir, f"{base_name}.html")
-            if not os.path.isfile(expected_output):
-                raise Exception("Docling转换失败: 输出文件未生成")
-            
-            # 如果输出文件不在预期位置，移动到正确位置
-            if expected_output != output_path:
-                os.rename(expected_output, output_path)
-                logging.info(f"已将输出文件从 {expected_output} 移动到 {output_path}")
-                
-        except asyncio.TimeoutError:
-            if process.returncode is None:
-                process.kill()
-            raise Exception(f"Docling转换超时，超过了{timeout}秒的限制")
-        finally:
-            # 确保子进程被终止
-            if process.returncode is None:
-                process.kill()
-            
+        doc = converter.convert(input_path).document
+        content = doc.export_to_html()
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+             
     except Exception as e:
         logging.error(f"Docling转换出错: {e}")
         raise
