@@ -55,6 +55,7 @@ Pygments==2.19.1
 pylatexenc==2.10
 PyMuPDF==1.25.5
 pypandoc==1.15
+pypandoc_binary==1.15
 pypdfium2==4.30.1
 python-bidi==0.6.6
 python-dateutil==2.9.0.post0
