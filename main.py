@@ -25,8 +25,8 @@ def init_docling_converter():
     pipeline_options = PdfPipelineOptions()
     pipeline_options.force_backend_text = True
     pipeline_options.do_ocr = True
-    pipeline_options.do_table_structure = True
-    pipeline_options.table_structure_options.do_cell_matching = True
+    pipeline_options.do_table_structure = False
+    pipeline_options.do_picture_description = False
     ocr_options = TesseractCliOcrOptions(force_full_page_ocr=True, lang=["chi_sim"])
     pipeline_options.ocr_options = ocr_options
     return DocumentConverter(
@@ -65,7 +65,6 @@ async def convert(from_format: str = Form(...), to_format: str = Form(...), file
         await save_uploaded_file(file, content, input_path)
         if from_format == "pdf":
             if use_ocr and to_format == "html":
-                # 使用 docling 直接转换
                 await convert_pdf_with_docling(input_path, output_path)
                 logging.info("Docling OCR转换成功")
                 final_path = output_path
@@ -175,15 +174,10 @@ async def convert_pdf_with_docling(input_path, output_path):
         output_dir = os.path.dirname(output_path)
         os.makedirs(output_dir, exist_ok=True)
         
-        try:
-            doc = converter.convert(input_path).document
-            content = doc.export_to_html()
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-        except ImportError as e:
-            # 如果无法导入docling相关模块，提供错误信息
-            logging.error(f"无法导入Docling相关模块: {e}")
-            raise HTTPException(status_code=500, detail="服务器未正确配置OCR功能，请尝试不使用OCR选项")
+        doc = converter.convert(input_path).document
+        content = doc.export_to_html()
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(content)
              
     except Exception as e:
         logging.error(f"Docling转换出错: {e}")
