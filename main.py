@@ -2,15 +2,12 @@ from fastapi import FastAPI, File, Form, UploadFile, HTTPException
 from fastapi.responses import PlainTextResponse
 from fastapi.responses import FileResponse
 from tempfile import mkdtemp
-from pdf2docx import Converter
 import asyncio
 import pypandoc
 import logging
 import os
 import subprocess
 import sys
-import multiprocessing as mp
-from pathlib import Path
 
 app = FastAPI()
 
@@ -18,12 +15,10 @@ logging.basicConfig(level=logging.INFO)
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
 def init_docling_converter():
-    from docling.backend.docling_parse_backend import DoclingParseDocumentBackend
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import (
         PdfPipelineOptions,
         TesseractCliOcrOptions,
-        TesseractOcrOptions,
     )
     from docling.document_converter import DocumentConverter, PdfFormatOption
     
@@ -33,14 +28,13 @@ def init_docling_converter():
     pipeline_options.table_structure_options.do_cell_matching = True
     ocr_options = TesseractCliOcrOptions(force_full_page_ocr=True, lang=["chi_sim"])
     pipeline_options.ocr_options = ocr_options
-    converter = DocumentConverter(
+    return DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(
                 pipeline_options=pipeline_options,
             )
         }
     )
-    return converter
 converter = init_docling_converter()
 
 @app.get("/", response_class=PlainTextResponse)
