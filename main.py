@@ -23,6 +23,7 @@ def init_docling_converter():
     from docling.document_converter import DocumentConverter, PdfFormatOption
     
     pipeline_options = PdfPipelineOptions()
+    pipeline_options.force_backend_text = True
     pipeline_options.do_ocr = True
     pipeline_options.do_table_structure = True
     pipeline_options.table_structure_options.do_cell_matching = True
