@@ -176,6 +176,7 @@ async def convert_pdf_with_docling(input_path, output_path):
         
         doc = converter.convert(input_path).document
         content = doc.export_to_html()
+        content = content.replace("Powered by Docling", "")
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(content)
              
