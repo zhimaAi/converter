@@ -18,16 +18,12 @@ def init_docling_converter():
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import (
         PdfPipelineOptions,
-        EasyOcrOptions,
+        RapidOcrOptions,
     )
     from docling.document_converter import DocumentConverter, PdfFormatOption
     
     pipeline_options = PdfPipelineOptions()
-    pipeline_options.force_backend_text = True
-    pipeline_options.do_ocr = True
-    pipeline_options.do_table_structure = True
-    pipeline_options.do_picture_description = False
-    ocr_options = EasyOcrOptions(force_full_page_ocr=True, lang=["ch_sim"])
+    ocr_options = RapidOcrOptions(force_full_page_ocr=True)
     pipeline_options.ocr_options = ocr_options
     return DocumentConverter(
         format_options={

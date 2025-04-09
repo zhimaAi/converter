@@ -4,8 +4,6 @@ FROM python:3.12-slim-bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     pandoc \
-    tesseract-ocr \
-    tesseract-ocr-chi-sim \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /code
@@ -20,14 +18,10 @@ RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 COPY ./test.pdf /code/test.pdf
 RUN python -c "from docling.document_converter import DocumentConverter; \
     from docling.datamodel.base_models import InputFormat; \
-    from docling.datamodel.pipeline_options import PdfPipelineOptions, EasyOcrOptions; \
+    from docling.datamodel.pipeline_options import PdfPipelineOptions, RapidOcrOptions; \
     from docling.document_converter import PdfFormatOption; \
     pipeline_options = PdfPipelineOptions(); \
-    pipeline_options.force_backend_text = True; \
-    pipeline_options.do_ocr = True; \
-    pipeline_options.do_table_structure = False; \
-    pipeline_options.do_picture_description = False; \
-    ocr_options = EasyOcrOptions(force_full_page_ocr=True, lang=['ch_sim']); \
+    ocr_options = RapidOcrOptions(force_full_page_ocr=True); \
     pipeline_options.ocr_options = ocr_options; \
     format_option = PdfFormatOption(pipeline_options=pipeline_options); \
     converter = DocumentConverter(format_options={InputFormat.PDF: format_option}); \
@@ -38,4 +32,4 @@ RUN python -c "from docling.document_converter import DocumentConverter; \
 # 复制应用代码
 COPY ./main.py /code/
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--timeout-keep-alive", "60"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80", "--timeout-keep-alive", "200"]
