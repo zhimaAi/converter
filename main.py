@@ -8,6 +8,7 @@ import logging
 import os
 import subprocess
 import sys
+from docling_core.types.doc.base import ImageRefMode
 
 app = FastAPI()
 
@@ -21,10 +22,12 @@ def init_docling_converter():
         RapidOcrOptions,
     )
     from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling_core.types.doc.base import ImageRefMode
     
     pipeline_options = PdfPipelineOptions()
     ocr_options = RapidOcrOptions(force_full_page_ocr=True)
     pipeline_options.ocr_options = ocr_options
+    pipeline_options.generate_page_images = True
     return DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(
@@ -171,7 +174,7 @@ async def convert_pdf_with_docling(input_path, output_path):
         os.makedirs(output_dir, exist_ok=True)
         
         doc = converter.convert(input_path).document
-        content = doc.export_to_html()
+        content = doc.export_to_html(image_mode=ImageRefMode.EMBEDDED)
         content = content.replace("Powered by Docling", "")
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(content)
