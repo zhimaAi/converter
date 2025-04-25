@@ -15,19 +15,18 @@ app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 os.environ['HF_ENDPOINT'] = 'https://hf-mirror.com'
 
-def init_docling_converter():
+def init_docling_converter(extract_images: bool = True):
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import (
         PdfPipelineOptions,
         RapidOcrOptions,
     )
     from docling.document_converter import DocumentConverter, PdfFormatOption
-    from docling_core.types.doc.base import ImageRefMode
     
     pipeline_options = PdfPipelineOptions()
     ocr_options = RapidOcrOptions(force_full_page_ocr=True)
     pipeline_options.ocr_options = ocr_options
-    pipeline_options.generate_page_images = True
+    pipeline_options.generate_page_images = extract_images
     return DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(
@@ -35,7 +34,7 @@ def init_docling_converter():
             )
         }
     )
-converter = init_docling_converter()
+converter = None  # 将在每次请求时根据参数初始化
 
 @app.get("/", response_class=PlainTextResponse)
 async def root():
@@ -46,9 +45,19 @@ async def pong():
     return "pong"
 
 @app.post("/convert")
-async def convert(from_format: str = Form(...), to_format: str = Form(...), file: UploadFile = File(None), content: str = Form(None), use_ocr: bool = Form(False)):
+async def convert(
+    from_format: str = Form(...), 
+    to_format: str = Form(...), 
+    file: UploadFile = File(None), 
+    content: str = Form(None), 
+    use_ocr: bool = Form(False),
+    extract_images: bool = Form(True)
+):
     # print("收到请求 from_format: ", from_format, " to_format: ", to_format , " file: ", file, " content: ", content)
-    logging.info(f"收到请求 from_format: {from_format}, to_format: {to_format}, file: {file}, content: {content}, use_ocr: {use_ocr}")
+    logging.info(f"收到请求 from_format: {from_format}, to_format: {to_format}, file: {file}, content: {content}, use_ocr: {use_ocr}, extract_images: {extract_images}")
+
+    global converter
+    converter = init_docling_converter(extract_images)
 
     if to_format == "pdf":
         raise HTTPException(status_code=400, detail="Conversion to pdf is not supported")
